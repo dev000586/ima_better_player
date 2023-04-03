@@ -427,9 +427,20 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         creationParams: {'textureId': textureId!},
       );
     } else {
-      return Texture(textureId: textureId!);
+      // return Texture(textureId: textureId!);
+      return AndroidView(
+        onPlatformViewCreated: onPlatformViewCreated,
+        viewType: 'com.jhomlala/better_player',
+        creationParamsCodec: const StandardMessageCodec(),
+        creationParams: {'textureId': textureId!},
+      );
     }
   }
+
+  void onPlatformViewCreated(int id) {
+    print("======================================================");
+  }
+
 
   EventChannel _eventChannelFor(int? textureId) {
     return EventChannel('better_player_channel/videoEvents$textureId');

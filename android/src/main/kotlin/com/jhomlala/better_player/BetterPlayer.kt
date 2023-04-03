@@ -6,8 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -17,6 +19,10 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.TypedArrayUtils.getString
 import androidx.lifecycle.Observer
 import androidx.work.Data
@@ -31,6 +37,8 @@ import com.google.android.exoplayer2.ext.ima.ImaAdsLoader
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.*
+import com.google.android.exoplayer2.source.ads.AdPlaybackState
+import com.google.android.exoplayer2.source.ads.AdsLoader
 import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
@@ -38,9 +46,11 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.BitmapCallback
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.MediaDescriptionAdapter
+import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSource
@@ -53,6 +63,7 @@ import com.jhomlala.better_player.DataSourceUtils.isHTTP
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.platform.PlatformView
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry
 import java.io.File
 import java.util.*
@@ -66,10 +77,11 @@ internal class BetterPlayer(
     private val textureEntry: SurfaceTextureEntry,
     customDefaultLoadControl: CustomDefaultLoadControl?,
     result: MethodChannel.Result
-) {
+): PlatformView {
     //////////////////S///////////////////
     private var playerView: StyledPlayerView? = null
     private var adsLoader: ImaAdsLoader? = null
+    private var eventListener : AdsLoader.EventListener? = null
     //////////////////E//////////////////
     private val exoPlayer: ExoPlayer?
     private val eventSink = QueuingEventSink()
@@ -131,6 +143,11 @@ internal class BetterPlayer(
         ////////////////////S////////////////////////
         playerView?.player = exoPlayer
         adsLoader?.setPlayer(exoPlayer)
+//        playerView.isControllerVisible
+        playerView?.setControllerHideDuringAds(true)
+        playerView?.useController = false
+        playerView?.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+//        playerView.player.
         ////////////////////E////////////////////////
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
@@ -225,7 +242,14 @@ internal class BetterPlayer(
 //        }
 
 
-        val adTagUri = Uri.parse("https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dlinear&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=")
+        val adTagUri = Uri.parse("https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=")
+
+        var adPlaybackState = AdPlaybackState(0, 500 * C.MICROS_PER_SECOND)
+        adPlaybackState = adPlaybackState.withAdUri(0, 0, adTagUri)
+
+        eventListener?.onAdPlaybackState(adPlaybackState);
+
+
         val mediaItem = MediaItem.Builder().setUri(uri)
             .setAdsConfiguration(AdsConfiguration.Builder(adTagUri).build())  ////////////////S/////////////////////////E////////////
             .build()
@@ -772,9 +796,9 @@ internal class BetterPlayer(
         setAudioAttributes(exoPlayer, mixWithOthers)
     }
 
-    fun dispose() {
-        adsLoader?.setPlayer(null);
-        playerView?.player = null;
+    override fun dispose() {
+        adsLoader?.setPlayer(null)
+        playerView?.player = null
         disposeMediaSession()
         disposeRemoteNotifications()
         if (isInitialized) {
@@ -798,6 +822,10 @@ internal class BetterPlayer(
         var result = exoPlayer?.hashCode() ?: 0
         result = 31 * result + if (surface != null) surface.hashCode() else 0
         return result
+    }
+
+    override fun getView(): View? {
+        return playerView
     }
 
     companion object {

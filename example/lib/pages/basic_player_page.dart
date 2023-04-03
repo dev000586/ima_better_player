@@ -25,11 +25,8 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
               style: TextStyle(fontSize: 16),
             ),
           ),
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: BetterPlayer.network(
-              Constants.forBiggerBlazesUrl,
-            ),
+          BetterPlayer.network(
+            Constants.forBiggerBlazesUrl,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -7,22 +7,24 @@ import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
+import android.view.View
+import com.google.android.exoplayer2.ui.PlayerView
 import com.jhomlala.better_player.BetterPlayerCache.releaseCache
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterPluginBinding
 import io.flutter.embedding.engine.loader.FlutterLoader
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.EventChannel
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.*
+import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.platform.PlatformViewFactory
 import io.flutter.view.TextureRegistry
 import java.lang.Exception
 import java.util.HashMap
@@ -39,7 +41,12 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var activity: Activity? = null
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null
+    private var binding: FlutterPluginBinding? = null
+
+
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
+        this.binding = binding
+
         val loader = FlutterLoader()
         flutterState = FlutterState(
             binding.applicationContext,
@@ -115,19 +122,21 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                         call.argument(BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
                     )
                 }
-                val player = BetterPlayer(
+                val playerNativeView = BetterPlayer(
                     flutterState?.applicationContext!!, eventChannel, handle,
                     customDefaultLoadControl, result
                 )
-                videoPlayers.put(handle.id(), player)
+                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player", NativeViewFactory(eventChannel, handle,
+                    customDefaultLoadControl, result))
+                videoPlayers.put(handle.id(), playerNativeView)
             }
             PRE_CACHE_METHOD -> preCache(call, result)
             STOP_PRE_CACHE_METHOD -> stopPreCache(call, result)
             CLEAR_CACHE_METHOD -> clearCache(result)
             else -> {
                 val textureId = (call.argument<Any>(TEXTURE_ID_PARAMETER) as Number?)!!.toLong()
-                val player = videoPlayers[textureId]
-                if (player == null) {
+                val playerNativeView = videoPlayers[textureId]
+                if (playerNativeView == null) {
                     result.error(
                         "Unknown textureId",
                         "No video player associated with texture id $textureId",
@@ -135,7 +144,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     )
                     return
                 }
-                onMethodCall(call, result, textureId, player)
+                onMethodCall(call, result, textureId, playerNativeView)
             }
         }
     }
@@ -545,5 +554,17 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         private const val DISPOSE_METHOD = "dispose"
         private const val PRE_CACHE_METHOD = "preCache"
         private const val STOP_PRE_CACHE_METHOD = "stopPreCache"
+    }
+}
+
+
+internal class NativeViewFactory(private val eventChannel: EventChannel,
+                                 private val textureEntry: TextureRegistry.SurfaceTextureEntry,
+                                 private val customDefaultLoadControl: CustomDefaultLoadControl?,
+                                 private val result: MethodChannel.Result) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+    override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
+        val creationParams = args as Map<String?, Any?>?
+        val textureId = creationParams?.get("textureId")
+        return BetterPlayer(context!!, eventChannel, textureEntry, customDefaultLoadControl, result)
     }
 }
