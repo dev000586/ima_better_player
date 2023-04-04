@@ -5,6 +5,8 @@ import 'dart:async';
 import 'package:better_player/src/configuration/better_player_buffering_configuration.dart';
 import 'package:better_player/src/core/better_player_utils.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'video_player_platform_interface.dart';
@@ -336,7 +338,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       if (event is Map) {
         map = event;
       }
-      print("******************************************2=$map");
       final String? eventType = map["event"] as String?;
       final String? key = map["key"] as String?;
       switch (eventType) {
@@ -362,7 +363,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           return VideoEvent(
             eventType: VideoEventType.initialized,
             key: key,
-            duration: Duration(milliseconds: map['duration'] as int),
+            duration: Duration(milliseconds: map['duration'] ?? 0),
             size: size,
           );
         case 'completed':
@@ -384,7 +385,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             key: key,
           );
         case 'isPlayingAd':
-          print("******************************************1");
           return VideoEvent(
             eventType: VideoEventType.isPlayingAd,
             key: key,
@@ -394,6 +394,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           return VideoEvent(
             eventType: VideoEventType.bufferingEnd,
             key: key,
+            duration: Duration(milliseconds: map['duration'] ?? 0)
           );
 
         case 'play':
@@ -446,6 +447,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       );
     } else {
       // return Texture(textureId: textureId!);
+
       return AndroidView(
         viewType: 'com.jhomlala/better_player',
         creationParamsCodec: const StandardMessageCodec(),

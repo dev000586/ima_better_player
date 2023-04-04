@@ -18,6 +18,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
 import android.view.View
+import android.view.ViewGroup
 import androidx.core.os.postDelayed
 import androidx.lifecycle.Observer
 import androidx.work.Data
@@ -96,7 +97,8 @@ internal class BetterPlayer(
     private val customDefaultLoadControl: CustomDefaultLoadControl =
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
-    val handler = Handler(Looper.myLooper()!!)
+    private val handler = Handler(Looper.myLooper()!!)
+
 
 
 
@@ -150,11 +152,12 @@ internal class BetterPlayer(
 
         handler.postDelayed( object: Runnable {
             override fun run() {
-                if(isPlayingAd != exoPlayer?.isPlayingAd){
+                if(exoPlayer?.isPlayingAd != null && isPlayingAd != exoPlayer?.isPlayingAd){
                     Log.d("isPlayingAd======",exoPlayer?.isPlayingAd.toString())
                     val event: MutableMap<String, Any> = HashMap()
                     event["event"] = "isPlayingAd"
                     event["isPlayingAd"] = exoPlayer?.isPlayingAd.toString()
+                    event["duration"] = getDuration()
                     eventSink.success(event)
                     isPlayingAd = exoPlayer?.isPlayingAd!!
                 }
@@ -530,7 +533,7 @@ internal class BetterPlayer(
         setAudioAttributes(exoPlayer, true)
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                Log.d("playbackState==========",playbackState.toString())
+                Log.d("Duration==========",getDuration().toString());
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
                         sendBufferingUpdate(true)
@@ -545,6 +548,7 @@ internal class BetterPlayer(
                         }
                         val event: MutableMap<String, Any> = HashMap()
                         event["event"] = "bufferingEnd"
+                        event["duration"] = getDuration()
                         eventSink.success(event)
                     }
                     Player.STATE_ENDED -> {
@@ -682,7 +686,7 @@ internal class BetterPlayer(
         }
     }
 
-    private fun getDuration(): Long = exoPlayer?.duration ?: 0L
+    private fun getDuration(): Long = exoPlayer?.contentDuration ?: 0L
 
     /**
      * Create media session which will be used in notifications, pip mode.
@@ -814,20 +818,24 @@ internal class BetterPlayer(
     }
 
     override fun dispose() {
+        disposePlayer()
+    }
+
+    fun disposePlayer() {
+        (this.view as ViewGroup).removeView(this.view)
+        eventChannel.setStreamHandler(null)
         adsLoader?.setPlayer(null)
         playerView?.player = null
+        surface?.release()
+        exoPlayer?.release()
+        exoPlayer = null
+        handler.removeCallbacks{}
         disposeMediaSession()
         disposeRemoteNotifications()
         if (isInitialized) {
             exoPlayer?.stop()
         }
         textureEntry.release()
-        eventChannel.setStreamHandler(null)
-
-        surface?.release()
-        exoPlayer?.release()
-        exoPlayer = null
-        handler.removeCallbacks{}
     }
 
     override fun equals(other: Any?): Boolean {

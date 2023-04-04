@@ -113,17 +113,20 @@ class _BetterPlayerWithControlsState extends State<BetterPlayerWithControls> {
     final configuration = betterPlayerController.betterPlayerConfiguration;
     var rotation = configuration.rotation;
 
-    VideoPlayerController _controller = betterPlayerController.videoPlayerController!;
-    VideoPlayerValue _latestValue = _controller.value;
-
-    _controller.addListener(() {
-      if(_latestValue.isPlayingAd != _controller.value.isPlayingAd){
-        setState(() {
-          _latestValue = _controller.value;
-          print("+====+====+====+====+====+====+====+====+====+====+====+====+");
-        });
-      }
-    });
+    VideoPlayerController? _controller = betterPlayerController.videoPlayerController;
+    VideoPlayerValue? _latestValue = _controller?.value;
+    if(_controller != null) {
+      _controller.addListener(() {
+        if (_latestValue?.isPlayingAd != _controller.value.isPlayingAd ||
+            _latestValue?.duration != _controller.value.duration) {
+          if(this.mounted){
+            setState(() {
+              _latestValue = _controller.value;
+            });
+          }
+        }
+      });
+    }
 
     if (!(rotation <= 360 && rotation % 90 == 0)) {
       BetterPlayerUtils.log("Invalid rotation provided. Using rotation = 0");
@@ -158,7 +161,7 @@ class _BetterPlayerWithControlsState extends State<BetterPlayerWithControls> {
             playerVisibilityStream: playerVisibilityStreamController.stream,
           ),
           if (placeholderOnTop) _buildPlaceholder(betterPlayerController),
-          if (_latestValue.isPlayingAd != "true") _buildControls(context, betterPlayerController),
+          if (_latestValue?.isPlayingAd != "true" ||(_latestValue?.isPlayingAd == "true" && _latestValue?.isPlaying != true)) _buildControls(context, betterPlayerController),
         ],
       ),
     );
@@ -310,7 +313,11 @@ class _BetterPlayerVideoFitWidgetState
   @override
   Widget build(BuildContext context) {
     if (_initialized && _started) {
-      return VideoPlayer(controller);
+      return SizedBox(
+        width: controller!.value.size?.width ?? 0,
+        height: controller!.value.size?.height ?? 0,
+        child: VideoPlayer(controller),
+      );
       return Center(
         child: ClipRect(
           child: Container(

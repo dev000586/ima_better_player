@@ -240,7 +240,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           break;
         case VideoEventType.bufferingEnd:
           if (value.isBuffering) {
-            value = value.copyWith(isBuffering: false);
+            value = value.copyWith(isBuffering: false, duration: event.duration);
           }
           break;
         case VideoEventType.isPlayingAd:
