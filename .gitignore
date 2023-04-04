@@ -30,6 +30,8 @@
 .pub-cache/
 .pub/
 build/
+ssh_key
+ssh_key.pub
 
 # Android related
 **/android/**/gradle-wrapper.jar
