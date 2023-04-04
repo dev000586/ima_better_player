@@ -114,7 +114,16 @@ class _BetterPlayerWithControlsState extends State<BetterPlayerWithControls> {
     var rotation = configuration.rotation;
 
     VideoPlayerController _controller = betterPlayerController.videoPlayerController!;
-    VideoPlayerValue? _latestValue = _controller.value;
+    VideoPlayerValue _latestValue = _controller.value;
+
+    _controller.addListener(() {
+      if(_latestValue.isPlayingAd != _controller.value.isPlayingAd){
+        setState(() {
+          _latestValue = _controller.value;
+          print("+====+====+====+====+====+====+====+====+====+====+====+====+");
+        });
+      }
+    });
 
     if (!(rotation <= 360 && rotation % 90 == 0)) {
       BetterPlayerUtils.log("Invalid rotation provided. Using rotation = 0");
