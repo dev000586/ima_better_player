@@ -96,6 +96,11 @@ abstract class VideoPlayerPlatform {
     throw UnimplementedError('setLooping() has not been implemented.');
   }
 
+  /// Get that player is playing ads or not.
+  Future<String?> isPlayingAd() {
+    throw UnimplementedError('isPlayingAd() has not been implemented.');
+  }
+
   /// Starts the video playback.
   Future<void> play(int? textureId) {
     throw UnimplementedError('play() has not been implemented.');
@@ -375,6 +380,7 @@ class VideoEvent {
   VideoEvent({
     required this.eventType,
     required this.key,
+    this.isPlayingAd = "false",
     this.duration,
     this.size,
     this.buffered,
@@ -383,6 +389,9 @@ class VideoEvent {
 
   /// The type of the event.
   final VideoEventType eventType;
+
+  /// The player is playing ads or not.
+  final String isPlayingAd;
 
   /// Data source of the video.
   ///
@@ -464,6 +473,10 @@ enum VideoEventType {
 
   /// An unknown event has been received.
   unknown,
+
+  /// An Event to detect ads are playing or not.
+  isPlayingAd,
+
 }
 
 /// Describes a discrete segment of time within a video using a [start] and

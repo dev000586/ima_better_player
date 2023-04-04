@@ -6,10 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -20,10 +18,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
 import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
-import androidx.core.content.ContextCompat
-import androidx.core.content.res.TypedArrayUtils.getString
+import androidx.core.os.postDelayed
 import androidx.lifecycle.Observer
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -46,11 +41,9 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.BitmapCallback
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.MediaDescriptionAdapter
-import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSource
@@ -82,8 +75,9 @@ internal class BetterPlayer(
     private var playerView: StyledPlayerView? = null
     private var adsLoader: ImaAdsLoader? = null
     private var eventListener : AdsLoader.EventListener? = null
+    private var isPlayingAd = false
     //////////////////E//////////////////
-    private val exoPlayer: ExoPlayer?
+    private var exoPlayer: ExoPlayer?
     private val eventSink = QueuingEventSink()
     private val trackSelector: DefaultTrackSelector = DefaultTrackSelector(context)
     private val loadControl: LoadControl
@@ -102,6 +96,9 @@ internal class BetterPlayer(
     private val customDefaultLoadControl: CustomDefaultLoadControl =
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
+    val handler = Handler(Looper.myLooper()!!)
+
+
 
     init {
         ////////////////////////S////////////////////////////
@@ -144,15 +141,32 @@ internal class BetterPlayer(
         playerView?.player = exoPlayer
         adsLoader?.setPlayer(exoPlayer)
 //        playerView.isControllerVisible
-        playerView?.setControllerHideDuringAds(true)
         playerView?.useController = false
-        playerView?.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
 //        playerView.player.
         ////////////////////E////////////////////////
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         setupVideoPlayer(eventChannel, textureEntry, result)
+
+        handler.postDelayed( object: Runnable {
+            override fun run() {
+                if(isPlayingAd != exoPlayer?.isPlayingAd){
+                    Log.d("isPlayingAd======",exoPlayer?.isPlayingAd.toString())
+                    val event: MutableMap<String, Any> = HashMap()
+                    event["event"] = "isPlayingAd"
+                    event["isPlayingAd"] = exoPlayer?.isPlayingAd.toString()
+                    eventSink.success(event)
+                    isPlayingAd = exoPlayer?.isPlayingAd!!
+                }
+                handler.postDelayed(this, 1000)                }
+        }, 0)
     }
+
+    override fun getView(): View? {
+        Log.d("========1232233==", playerView.toString())
+        return playerView
+    }
+
 
     fun setDataSource(
         context: Context,
@@ -369,7 +383,7 @@ internal class BetterPlayer(
         playerNotificationManager?.apply {
 
             exoPlayer?.let {
-                setPlayer(ForwardingPlayer(exoPlayer))
+                setPlayer(ForwardingPlayer(exoPlayer!!))
                 setUseNextAction(false)
                 setUsePreviousAction(false)
                 setUseStopAction(false)
@@ -511,11 +525,12 @@ internal class BetterPlayer(
                     eventSink.setDelegate(null)
                 }
             })
-        surface = Surface(textureEntry.surfaceTexture())
-        exoPlayer?.setVideoSurface(surface)
+//        surface = Surface(textureEntry.surfaceTexture())
+//        exoPlayer?.setVideoSurface(surface)
         setAudioAttributes(exoPlayer, true)
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
+                Log.d("playbackState==========",playbackState.toString())
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
                         sendBufferingUpdate(true)
@@ -548,9 +563,11 @@ internal class BetterPlayer(
                 eventSink.error("VideoError", "Video player had error $error", "")
             }
         })
+
         val reply: MutableMap<String, Any> = HashMap()
         reply["textureId"] = textureEntry.id()
         result.success(reply)
+
     }
 
     fun sendBufferingUpdate(isFromBufferingStart: Boolean) {
@@ -649,14 +666,14 @@ internal class BetterPlayer(
             event["key"] = key
             event["duration"] = getDuration()
             if (exoPlayer?.videoFormat != null) {
-                val videoFormat = exoPlayer.videoFormat
+                val videoFormat = exoPlayer?.videoFormat
                 var width = videoFormat?.width
                 var height = videoFormat?.height
                 val rotationDegrees = videoFormat?.rotationDegrees
                 // Switch the width/height if video was taken in portrait mode
                 if (rotationDegrees == 90 || rotationDegrees == 270) {
-                    width = exoPlayer.videoFormat?.height
-                    height = exoPlayer.videoFormat?.width
+                    width = exoPlayer?.videoFormat?.height
+                    height = exoPlayer?.videoFormat?.width
                 }
                 event["width"] = width
                 event["height"] = height
@@ -665,7 +682,7 @@ internal class BetterPlayer(
         }
     }
 
-    private fun getDuration(): Long = exoPlayer?.duration ?: 0L
+    private fun getDuration(): Long = exoPlayer?.contentDuration ?: 0L
 
     /**
      * Create media session which will be used in notifications, pip mode.
@@ -806,8 +823,11 @@ internal class BetterPlayer(
         }
         textureEntry.release()
         eventChannel.setStreamHandler(null)
+
         surface?.release()
         exoPlayer?.release()
+        exoPlayer = null
+        handler.removeCallbacks{}
     }
 
     override fun equals(other: Any?): Boolean {
@@ -822,10 +842,6 @@ internal class BetterPlayer(
         var result = exoPlayer?.hashCode() ?: 0
         result = 31 * result + if (surface != null) surface.hashCode() else 0
         return result
-    }
-
-    override fun getView(): View? {
-        return playerView
     }
 
     companion object {

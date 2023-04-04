@@ -153,6 +153,14 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
+  Future<String?> isPlayingAd() {
+    return _channel.invokeMethod<String>(
+      'isPlayingAd',
+      <String, dynamic>{},
+    );
+  }
+
+  @override
   Future<void> setVolume(int? textureId, double volume) {
     return _channel.invokeMethod<void>(
       'setVolume',
@@ -288,6 +296,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     );
   }
 
+
+
   @override
   Future<void> preCache(DataSource dataSource, int preCacheSize) {
     final Map<String, dynamic> dataSourceDescription = <String, dynamic>{
@@ -326,6 +336,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       if (event is Map) {
         map = event;
       }
+      print("******************************************2=$map");
       final String? eventType = map["event"] as String?;
       final String? key = map["key"] as String?;
       switch (eventType) {
@@ -371,6 +382,13 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           return VideoEvent(
             eventType: VideoEventType.bufferingStart,
             key: key,
+          );
+        case 'isPlayingAd':
+          print("******************************************1");
+          return VideoEvent(
+            eventType: VideoEventType.isPlayingAd,
+            key: key,
+            isPlayingAd: map['isPlayingAd']
           );
         case 'bufferingEnd':
           return VideoEvent(
@@ -429,17 +447,13 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     } else {
       // return Texture(textureId: textureId!);
       return AndroidView(
-        onPlatformViewCreated: onPlatformViewCreated,
         viewType: 'com.jhomlala/better_player',
         creationParamsCodec: const StandardMessageCodec(),
-        creationParams: {'textureId': textureId!},
       );
     }
   }
 
-  void onPlatformViewCreated(int id) {
-    print("======================================================");
-  }
+
 
 
   EventChannel _eventChannelFor(int? textureId) {

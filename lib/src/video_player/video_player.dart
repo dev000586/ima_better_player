@@ -21,7 +21,7 @@ class VideoPlayerValue {
   /// Constructs a video with the given values. Only [duration] is required. The
   /// rest will initialize with default values when unset.
   VideoPlayerValue({
-    required this.duration,
+    this.duration,
     this.size,
     this.position = const Duration(),
     this.absolutePosition,
@@ -33,6 +33,7 @@ class VideoPlayerValue {
     this.speed = 1.0,
     this.errorDescription,
     this.isPip = false,
+    this.isPlayingAd = "false",
   });
 
   /// Returns an instance with a `null` [Duration].
@@ -64,6 +65,9 @@ class VideoPlayerValue {
 
   /// True if the video is looping.
   final bool isLooping;
+
+  /// True if the video is playing ads.
+  final String isPlayingAd;
 
   /// True if the video is currently buffering.
   final bool isBuffering;
@@ -122,6 +126,7 @@ class VideoPlayerValue {
     String? errorDescription,
     double? speed,
     bool? isPip,
+    String? isPlayingAd,
   }) {
     return VideoPlayerValue(
       duration: duration ?? this.duration,
@@ -136,6 +141,7 @@ class VideoPlayerValue {
       speed: speed ?? this.speed,
       errorDescription: errorDescription ?? this.errorDescription,
       isPip: isPip ?? this.isPip,
+      isPlayingAd: isPlayingAd ?? this.isPlayingAd,
     );
   }
 
@@ -144,6 +150,7 @@ class VideoPlayerValue {
     // ignore: no_runtimetype_tostring
     return '$runtimeType('
         'duration: $duration, '
+        'isPlayingAd: $isPlayingAd, '
         'size: $size, '
         'position: $position, '
         'absolutePosition: $absolutePosition, '
@@ -235,6 +242,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           if (value.isBuffering) {
             value = value.copyWith(isBuffering: false);
           }
+          break;
+        case VideoEventType.isPlayingAd:
+            value = value.copyWith(isPlayingAd: event.isPlayingAd);
           break;
 
         case VideoEventType.play:

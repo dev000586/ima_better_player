@@ -126,8 +126,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     flutterState?.applicationContext!!, eventChannel, handle,
                     customDefaultLoadControl, result
                 )
-                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player", NativeViewFactory(eventChannel, handle,
-                    customDefaultLoadControl, result))
+                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player", NativeViewFactory(playerNativeView))
                 videoPlayers.put(handle.id(), playerNativeView)
             }
             PRE_CACHE_METHOD -> preCache(call, result)
@@ -168,7 +167,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 result.success(null)
             }
             PLAY_METHOD -> {
-                setupNotification(player)
+//                setupNotification(player)
                 player.play()
                 result.success(null)
             }
@@ -360,6 +359,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
         return null
     }
+/*
 
     private fun setupNotification(betterPlayer: BetterPlayer) {
         try {
@@ -382,16 +382,17 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                         getParameter<String?>(dataSource, NOTIFICATION_CHANNEL_NAME_PARAMETER, null)
                     val activityName =
                         getParameter(dataSource, ACTIVITY_NAME_PARAMETER, "MainActivity")
-                    betterPlayer.setupPlayerNotification(
-                        flutterState?.applicationContext!!,
-                        title, author, imageUrl, notificationChannelName, activityName
-                    )
+//                    betterPlayer.setupPlayerNotification(
+//                        flutterState?.applicationContext!!,
+//                        title, author, imageUrl, notificationChannelName, activityName
+//                    )
                 }
             }
         } catch (exception: Exception) {
             Log.e(TAG, "SetupNotification failed", exception)
         }
     }
+*/
 
     private fun removeOtherNotificationListeners() {
         for (index in 0 until videoPlayers.size()) {
@@ -558,13 +559,10 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 }
 
 
-internal class NativeViewFactory(private val eventChannel: EventChannel,
-                                 private val textureEntry: TextureRegistry.SurfaceTextureEntry,
-                                 private val customDefaultLoadControl: CustomDefaultLoadControl?,
-                                 private val result: MethodChannel.Result) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+internal class NativeViewFactory(private val player: BetterPlayer) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
         val creationParams = args as Map<String?, Any?>?
         val textureId = creationParams?.get("textureId")
-        return BetterPlayer(context!!, eventChannel, textureEntry, customDefaultLoadControl, result)
+        return player
     }
 }
