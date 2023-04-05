@@ -18,8 +18,6 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
 import android.view.View
-import android.view.ViewGroup
-import androidx.core.os.postDelayed
 import androidx.lifecycle.Observer
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -528,8 +526,7 @@ internal class BetterPlayer(
                     eventSink.setDelegate(null)
                 }
             })
-//        surface = Surface(textureEntry.surfaceTexture())
-//        exoPlayer?.setVideoSurface(surface)
+
         setAudioAttributes(exoPlayer, true)
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -821,8 +818,8 @@ internal class BetterPlayer(
         disposePlayer()
     }
 
+
     fun disposePlayer() {
-        (this.view as ViewGroup).removeView(this.view)
         eventChannel.setStreamHandler(null)
         adsLoader?.setPlayer(null)
         playerView?.player = null

@@ -14,6 +14,7 @@ import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
 import android.view.View
+import android.view.ViewGroup
 import com.google.android.exoplayer2.ui.PlayerView
 import com.jhomlala.better_player.BetterPlayerCache.releaseCache
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -32,7 +33,7 @@ import java.util.HashMap
 /**
  * Android platform implementation of the VideoPlayerPlugin.
  */
-class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
+class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     private val videoPlayers = LongSparseArray<BetterPlayer>()
     private val dataSources = LongSparseArray<Map<String, Any?>>()
     private var flutterState: FlutterState? = null
@@ -42,6 +43,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null
     private var binding: FlutterPluginBinding? = null
+    private var playerNativeView:BetterPlayer? = null
+    private var viewId:Int? = null
 
 
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
@@ -122,12 +125,12 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                         call.argument(BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
                     )
                 }
-                val playerNativeView = BetterPlayer(
-                    flutterState?.applicationContext!!, eventChannel, handle,
+                playerNativeView = BetterPlayer(
+                    activity?.window?.context!!, eventChannel, handle,
                     customDefaultLoadControl, result
                 )
-                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player", NativeViewFactory(playerNativeView))
                 videoPlayers.put(handle.id(), playerNativeView)
+                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player/${handle.id()}", NativeViewFactory(playerNativeView!!))
             }
             PRE_CACHE_METHOD -> preCache(call, result)
             STOP_PRE_CACHE_METHOD -> stopPreCache(call, result)
@@ -146,6 +149,11 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 onMethodCall(call, result, textureId, playerNativeView)
             }
         }
+    }
+
+    override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
+        this.viewId = viewId
+        return playerNativeView!!
     }
 
     private fun onMethodCall(
@@ -558,11 +566,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 }
 
-
 internal class NativeViewFactory(private val player: BetterPlayer) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
-        val creationParams = args as Map<String?, Any?>?
-        val textureId = creationParams?.get("textureId")
         return player
     }
 }

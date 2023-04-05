@@ -449,7 +449,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       // return Texture(textureId: textureId!);
 
       return AndroidView(
-        viewType: 'com.jhomlala/better_player',
+        viewType: 'com.jhomlala/better_player/$textureId',
         creationParamsCodec: const StandardMessageCodec(),
       );
     }
