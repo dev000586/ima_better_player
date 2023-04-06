@@ -47,6 +47,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
     private var viewId:Int? = null
 
 
+
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
         this.binding = binding
 
@@ -126,7 +127,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
                     )
                 }
                 playerNativeView = BetterPlayer(
-                    activity?.window?.context!!, eventChannel, handle,
+                    flutterState?.applicationContext!!, eventChannel, handle,
                     customDefaultLoadControl, result
                 )
                 videoPlayers.put(handle.id(), playerNativeView)
@@ -568,6 +569,9 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
 
 internal class NativeViewFactory(private val player: BetterPlayer) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
+        if (player.view != null && player.view?.parent != null) {
+            (player.view?.parent as ViewGroup).removeView(player.view)
+        }
         return player
     }
 }

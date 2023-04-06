@@ -16,8 +16,10 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Surface
 import android.view.View
+import android.view.ViewGroup
 import androidx.lifecycle.Observer
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -68,8 +70,7 @@ internal class BetterPlayer(
     private val eventChannel: EventChannel,
     private val textureEntry: SurfaceTextureEntry,
     customDefaultLoadControl: CustomDefaultLoadControl?,
-    result: MethodChannel.Result
-): PlatformView {
+    result: MethodChannel.Result): PlatformView {
     //////////////////S///////////////////
     private var playerView: StyledPlayerView? = null
     private var adsLoader: ImaAdsLoader? = null
@@ -96,13 +97,17 @@ internal class BetterPlayer(
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
     private val handler = Handler(Looper.myLooper()!!)
+    private val inflator: LayoutInflater
 
 
 
 
     init {
+        inflator = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        val view = inflator.inflate(R.layout.activity_video_ad, null, false)
         ////////////////////////S////////////////////////////
-        playerView = StyledPlayerView(context)
+//        playerView = StyledPlayerView(context)
+        playerView = view.findViewById(R.id.player_view)
         // Create an AdsLoader.
         adsLoader = ImaAdsLoader.Builder( /* context= */context).build()
         ////////////////////////E///////////////////////////
@@ -164,7 +169,6 @@ internal class BetterPlayer(
     }
 
     override fun getView(): View? {
-        Log.d("========1232233==", playerView.toString())
         return playerView
     }
 
@@ -820,6 +824,9 @@ internal class BetterPlayer(
 
 
     fun disposePlayer() {
+        if (playerView != null && playerView?.parent != null) {
+            (playerView?.parent as ViewGroup).removeView(playerView)
+        }
         eventChannel.setStreamHandler(null)
         adsLoader?.setPlayer(null)
         playerView?.player = null
