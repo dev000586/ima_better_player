@@ -9,6 +9,7 @@ class BasicPlayerPage extends StatefulWidget {
 }
 
 class _BasicPlayerPageState extends State<BasicPlayerPage> {
+  String adsUrl = "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=";
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,6 +28,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
           ),
           BetterPlayer.network(
             Constants.forBiggerBlazesUrl,
+            adsUrl: adsUrl,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -40,7 +42,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
             future: Utils.getFileUrl(Constants.fileTestVideoUrl),
             builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
               if (snapshot.data != null) {
-                return BetterPlayer.file(snapshot.data!);
+                return BetterPlayer.file(snapshot.data!, adsUrl: adsUrl,);
               } else {
                 return const SizedBox();
               }

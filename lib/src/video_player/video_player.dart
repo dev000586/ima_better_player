@@ -182,7 +182,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     bool autoCreate = true,
   }) : super(VideoPlayerValue(duration: null)) {
     if (autoCreate) {
-      _create();
+      create();
     }
   }
 
@@ -205,7 +205,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   int? get textureId => _textureId;
 
   /// Attempts to open the given [dataSource] and load metadata about the video.
-  Future<void> _create() async {
+  Future<void> create() async {
     _textureId = await _videoPlayerPlatform.create(
       bufferingConfiguration: bufferingConfiguration,
     );
@@ -292,6 +292,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// package and null otherwise.
   Future<void> setAssetDataSource(
     String dataSource, {
+    required String adsSource,
     String? package,
     bool? showNotification,
     String? title,
@@ -305,6 +306,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       DataSource(
         sourceType: DataSourceType.asset,
         asset: dataSource,
+        adsUri: adsSource,
         package: package,
         showNotification: showNotification,
         title: title,
@@ -327,6 +329,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// ClearKey DRM only supported on Android.
   Future<void> setNetworkDataSource(
     String dataSource, {
+    required String adsSource,
     VideoFormat? formatHint,
     Map<String, String?>? headers,
     bool useCache = false,
@@ -350,6 +353,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       DataSource(
         sourceType: DataSourceType.network,
         uri: dataSource,
+        adsUri: adsSource,
         formatHint: formatHint,
         headers: headers,
         useCache: useCache,
@@ -378,6 +382,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// `'file://${file.path}'`.
   Future<void> setFileDataSource(File file,
       {bool? showNotification,
+      required String adsSource,
       String? title,
       String? author,
       String? imageUrl,
@@ -389,6 +394,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       DataSource(
           sourceType: DataSourceType.file,
           uri: 'file://${file.path}',
+          adsUri: adsSource,
           showNotification: showNotification,
           title: title,
           author: author,

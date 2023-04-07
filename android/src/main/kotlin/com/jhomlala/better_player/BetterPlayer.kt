@@ -20,6 +20,7 @@ import android.view.LayoutInflater
 import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import androidx.lifecycle.Observer
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -98,7 +99,7 @@ internal class BetterPlayer(
     private var lastSendBufferedPosition = 0L
     private val handler = Handler(Looper.myLooper()!!)
     private val inflator: LayoutInflater
-
+    private var replySubmitted = false
 
 
 
@@ -106,8 +107,15 @@ internal class BetterPlayer(
         inflator = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val view = inflator.inflate(R.layout.activity_video_ad, null, false)
         ////////////////////////S////////////////////////////
+
+        if(view.parent != null){
+            (view.parent as ViewGroup).removeView(view)
+        }
 //        playerView = StyledPlayerView(context)
         playerView = view.findViewById(R.id.player_view)
+        if(playerView?.parent != null){
+            (playerView?.parent as ViewGroup).removeView(playerView)
+        }
         // Create an AdsLoader.
         adsLoader = ImaAdsLoader.Builder( /* context= */context).build()
         ////////////////////////E///////////////////////////
@@ -177,6 +185,7 @@ internal class BetterPlayer(
         context: Context,
         key: String?,
         dataSource: String?,
+        adsSource: String?,
         formatHint: String?,
         result: MethodChannel.Result,
         headers: Map<String, String>?,
@@ -189,69 +198,71 @@ internal class BetterPlayer(
         cacheKey: String?,
         clearKey: String?
     ) {
-        this.key = key
-        isInitialized = false
-        val uri = Uri.parse(dataSource)
-        var dataSourceFactory: DataSource.Factory?
-        val userAgent = getUserAgent(headers)
-        if (licenseUrl != null && licenseUrl.isNotEmpty()) {
-            val httpMediaDrmCallback =
-                HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
-            if (drmHeaders != null) {
-                for ((drmKey, drmValue) in drmHeaders) {
-                    httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+        try{
+            this.key = key
+            isInitialized = false
+            val uri = Uri.parse(dataSource)
+            val adsUri = Uri.parse(adsSource)
+            var dataSourceFactory: DataSource.Factory?
+            val userAgent = getUserAgent(headers)
+            if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+                val httpMediaDrmCallback =
+                    HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
+                if (drmHeaders != null) {
+                    for ((drmKey, drmValue) in drmHeaders) {
+                        httpMediaDrmCallback.setKeyRequestProperty(drmKey, drmValue)
+                    }
                 }
-            }
-            if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                drmSessionManager = null
-            } else {
-                val drmSchemeUuid = Util.getDrmUuid("widevine")
-                if (drmSchemeUuid != null) {
-                    drmSessionManager = DefaultDrmSessionManager.Builder()
-                        .setUuidAndExoMediaDrmProvider(
-                            drmSchemeUuid
-                        ) { uuid: UUID? ->
-                            try {
-                                val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
-                                // Force L3.
-                                mediaDrm.setPropertyString("securityLevel", "L3")
-                                return@setUuidAndExoMediaDrmProvider mediaDrm
-                            } catch (e: UnsupportedDrmException) {
-                                return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    drmSessionManager = null
+                } else {
+                    val drmSchemeUuid = Util.getDrmUuid("widevine")
+                    if (drmSchemeUuid != null) {
+                        drmSessionManager = DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(
+                                drmSchemeUuid
+                            ) { uuid: UUID? ->
+                                try {
+                                    val mediaDrm = FrameworkMediaDrm.newInstance(uuid!!)
+                                    // Force L3.
+                                    mediaDrm.setPropertyString("securityLevel", "L3")
+                                    return@setUuidAndExoMediaDrmProvider mediaDrm
+                                } catch (e: UnsupportedDrmException) {
+                                    return@setUuidAndExoMediaDrmProvider DummyExoMediaDrm()
+                                }
                             }
-                        }
-                        .setMultiSession(false)
-                        .build(httpMediaDrmCallback)
+                            .setMultiSession(false)
+                            .build(httpMediaDrmCallback)
+                    }
                 }
-            }
-        } else if (clearKey != null && clearKey.isNotEmpty()) {
-            drmSessionManager = if (Util.SDK_INT < 18) {
-                Log.e(TAG, "Protected content not supported on API levels below 18")
-                null
+            } else if (clearKey != null && clearKey.isNotEmpty()) {
+                drmSessionManager = if (Util.SDK_INT < 18) {
+                    Log.e(TAG, "Protected content not supported on API levels below 18")
+                    null
+                } else {
+                    DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(
+                            C.CLEARKEY_UUID,
+                            FrameworkMediaDrm.DEFAULT_PROVIDER
+                        ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                }
             } else {
-                DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(
-                        C.CLEARKEY_UUID,
-                        FrameworkMediaDrm.DEFAULT_PROVIDER
-                    ).build(LocalMediaDrmCallback(clearKey.toByteArray()))
+                drmSessionManager = null
             }
-        } else {
-            drmSessionManager = null
-        }
-        if (isHTTP(uri)) {
-            dataSourceFactory = getDataSourceFactory(userAgent, headers)
-            if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
-                dataSourceFactory = CacheDataSourceFactory(
-                    context,
-                    maxCacheSize,
-                    maxCacheFileSize,
-                    dataSourceFactory
-                )
+            if (isHTTP(uri)) {
+                dataSourceFactory = getDataSourceFactory(userAgent, headers)
+                if (useCache && maxCacheSize > 0 && maxCacheFileSize > 0) {
+                    dataSourceFactory = CacheDataSourceFactory(
+                        context,
+                        maxCacheSize,
+                        maxCacheFileSize,
+                        dataSourceFactory
+                    )
+                }
+            } else {
+                dataSourceFactory = DefaultDataSource.Factory(context)
             }
-        } else {
-            dataSourceFactory = DefaultDataSource.Factory(context)
-        }
 //        val mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, cacheKey, context)
 //        if (overriddenDuration != 0L) {
 //            val clippingMediaSource = ClippingMediaSource(mediaSource, 0, overriddenDuration * 1000)
@@ -261,21 +272,29 @@ internal class BetterPlayer(
 //        }
 
 
-        val adTagUri = Uri.parse("https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=")
+            val adTagUri =
+//                Uri.parse(adsUri)
+                Uri.parse("https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=")
 
-        var adPlaybackState = AdPlaybackState(0, 500 * C.MICROS_PER_SECOND)
-        adPlaybackState = adPlaybackState.withAdUri(0, 0, adTagUri)
+            var adPlaybackState = AdPlaybackState(0, 500 * C.MICROS_PER_SECOND)
+            adPlaybackState = adPlaybackState.withAdUri(0, 0, adTagUri)
 
-        eventListener?.onAdPlaybackState(adPlaybackState);
+            eventListener?.onAdPlaybackState(adPlaybackState);
 
 
-        val mediaItem = MediaItem.Builder().setUri(uri)
-            .setAdsConfiguration(AdsConfiguration.Builder(adTagUri).build())  ////////////////S/////////////////////////E////////////
-            .build()
+            val mediaItem = MediaItem.Builder().setUri(uri)
+                .setAdsConfiguration(
+                    AdsConfiguration.Builder(adsUri).build()
+                )  ////////////////S/////////////////////////E////////////
+                .build()
 
-        exoPlayer?.setMediaItem(mediaItem)
-        exoPlayer?.prepare()
-        result.success(null)
+            exoPlayer?.setMediaItem(mediaItem)
+            exoPlayer?.prepare()
+            result.success(null)
+        }catch (e:Exception){
+            Log.e("Error creting view", e.message.toString())
+            result.error("","","")
+        }
     }
 
     fun setupPlayerNotification(
@@ -448,14 +467,14 @@ internal class BetterPlayer(
         bitmap = null
     }
 
-    private fun buildMediaSource(
+    /*private fun buildMediaSource(
         uri: Uri,
         mediaDataSourceFactory: DataSource.Factory,
         formatHint: String?,
         cacheKey: String?,
         context: Context
     ): MediaSource {
-        val type: Int
+        *//*val type: Int
         if (formatHint == null) {
             var lastPathSegment = uri.lastPathSegment
             if (lastPathSegment == null) {
@@ -514,65 +533,72 @@ internal class BetterPlayer(
             else -> {
                 throw IllegalStateException("Unsupported type: $type")
             }
-        }
-    }
+        }*//*
+    }*/
 
     private fun setupVideoPlayer(
         eventChannel: EventChannel, textureEntry: SurfaceTextureEntry, result: MethodChannel.Result
     ) {
-        eventChannel.setStreamHandler(
-            object : EventChannel.StreamHandler {
-                override fun onListen(o: Any?, sink: EventSink) {
-                    eventSink.setDelegate(sink)
+        try{
+            eventChannel.setStreamHandler(
+                object : EventChannel.StreamHandler {
+                    override fun onListen(o: Any?, sink: EventSink) {
+                        eventSink.setDelegate(sink)
+                    }
+
+                    override fun onCancel(o: Any?) {
+                        eventSink.setDelegate(null)
+                    }
+                })
+
+            setAudioAttributes(exoPlayer, true)
+            exoPlayer?.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    Log.d("Duration==========", getDuration().toString());
+                    when (playbackState) {
+                        Player.STATE_BUFFERING -> {
+                            sendBufferingUpdate(true)
+                            val event: MutableMap<String, Any> = HashMap()
+                            event["event"] = "bufferingStart"
+                            eventSink.success(event)
+                        }
+                        Player.STATE_READY -> {
+                            if (!isInitialized) {
+                                isInitialized = true
+                                sendInitialized()
+                            }
+                            val event: MutableMap<String, Any> = HashMap()
+                            event["event"] = "bufferingEnd"
+                            event["duration"] = getDuration()
+                            eventSink.success(event)
+                        }
+                        Player.STATE_ENDED -> {
+                            val event: MutableMap<String, Any?> = HashMap()
+                            event["event"] = "completed"
+                            event["key"] = key
+                            eventSink.success(event)
+                        }
+                        Player.STATE_IDLE -> {
+                            //no-op
+                        }
+                    }
                 }
 
-                override fun onCancel(o: Any?) {
-                    eventSink.setDelegate(null)
+                override fun onPlayerError(error: PlaybackException) {
+                    eventSink.error("VideoError", "Video player had error $error", "")
                 }
             })
 
-        setAudioAttributes(exoPlayer, true)
-        exoPlayer?.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                Log.d("Duration==========",getDuration().toString());
-                when (playbackState) {
-                    Player.STATE_BUFFERING -> {
-                        sendBufferingUpdate(true)
-                        val event: MutableMap<String, Any> = HashMap()
-                        event["event"] = "bufferingStart"
-                        eventSink.success(event)
-                    }
-                    Player.STATE_READY -> {
-                        if (!isInitialized) {
-                            isInitialized = true
-                            sendInitialized()
-                        }
-                        val event: MutableMap<String, Any> = HashMap()
-                        event["event"] = "bufferingEnd"
-                        event["duration"] = getDuration()
-                        eventSink.success(event)
-                    }
-                    Player.STATE_ENDED -> {
-                        val event: MutableMap<String, Any?> = HashMap()
-                        event["event"] = "completed"
-                        event["key"] = key
-                        eventSink.success(event)
-                    }
-                    Player.STATE_IDLE -> {
-                        //no-op
-                    }
-                }
+            if (!replySubmitted) {
+                val reply: MutableMap<String, Any> = HashMap()
+                reply["textureId"] = textureEntry.id()
+                result.success(reply)
+                replySubmitted = true
             }
-
-            override fun onPlayerError(error: PlaybackException) {
-                eventSink.error("VideoError", "Video player had error $error", "")
-            }
-        })
-
-        val reply: MutableMap<String, Any> = HashMap()
-        reply["textureId"] = textureEntry.id()
-        result.success(reply)
-
+        }catch (e:Exception){
+            Log.e("Error creting player", e.message.toString())
+            result.error("","","")
+        }
     }
 
     fun sendBufferingUpdate(isFromBufferingStart: Boolean) {
@@ -899,36 +925,46 @@ internal class BetterPlayer(
             maxCacheSize: Long, maxCacheFileSize: Long, headers: Map<String, String?>,
             cacheKey: String?, result: MethodChannel.Result
         ) {
-            val dataBuilder = Data.Builder()
-                .putString(BetterPlayerPlugin.URL_PARAMETER, dataSource)
-                .putLong(BetterPlayerPlugin.PRE_CACHE_SIZE_PARAMETER, preCacheSize)
-                .putLong(BetterPlayerPlugin.MAX_CACHE_SIZE_PARAMETER, maxCacheSize)
-                .putLong(BetterPlayerPlugin.MAX_CACHE_FILE_SIZE_PARAMETER, maxCacheFileSize)
-            if (cacheKey != null) {
-                dataBuilder.putString(BetterPlayerPlugin.CACHE_KEY_PARAMETER, cacheKey)
+            try{
+                val dataBuilder = Data.Builder()
+                    .putString(BetterPlayerPlugin.URL_PARAMETER, dataSource)
+                    .putLong(BetterPlayerPlugin.PRE_CACHE_SIZE_PARAMETER, preCacheSize)
+                    .putLong(BetterPlayerPlugin.MAX_CACHE_SIZE_PARAMETER, maxCacheSize)
+                    .putLong(BetterPlayerPlugin.MAX_CACHE_FILE_SIZE_PARAMETER, maxCacheFileSize)
+                if (cacheKey != null) {
+                    dataBuilder.putString(BetterPlayerPlugin.CACHE_KEY_PARAMETER, cacheKey)
+                }
+                for (headerKey in headers.keys) {
+                    dataBuilder.putString(
+                        BetterPlayerPlugin.HEADER_PARAMETER + headerKey,
+                        headers[headerKey]
+                    )
+                }
+                if (dataSource != null && context != null) {
+                    val cacheWorkRequest = OneTimeWorkRequest.Builder(CacheWorker::class.java)
+                        .addTag(dataSource)
+                        .setInputData(dataBuilder.build()).build()
+                    WorkManager.getInstance(context).enqueue(cacheWorkRequest)
+                }
+                result.success(null)
+            }catch (e:Exception){
+                Log.e("Error pre cache", e.message.toString())
+                result.error("","","")
             }
-            for (headerKey in headers.keys) {
-                dataBuilder.putString(
-                    BetterPlayerPlugin.HEADER_PARAMETER + headerKey,
-                    headers[headerKey]
-                )
-            }
-            if (dataSource != null && context != null) {
-                val cacheWorkRequest = OneTimeWorkRequest.Builder(CacheWorker::class.java)
-                    .addTag(dataSource)
-                    .setInputData(dataBuilder.build()).build()
-                WorkManager.getInstance(context).enqueue(cacheWorkRequest)
-            }
-            result.success(null)
         }
 
         //Stop pre cache of video with given url. If there's no work manager job for given url, then
         //it will be ignored.
         fun stopPreCache(context: Context?, url: String?, result: MethodChannel.Result) {
-            if (url != null && context != null) {
-                WorkManager.getInstance(context).cancelAllWorkByTag(url)
+            try{
+                if (url != null && context != null) {
+                    WorkManager.getInstance(context).cancelAllWorkByTag(url)
+                }
+                result.success(null)
+            }catch (e:Exception){
+                Log.e("Error stop cache", e.message.toString())
+                result.error("","","")
             }
-            result.success(null)
         }
     }
 

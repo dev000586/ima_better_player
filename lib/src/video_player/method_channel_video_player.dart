@@ -62,6 +62,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         dataSourceDescription = <String, dynamic>{
           'key': dataSource.key,
           'asset': dataSource.asset,
+          'adsUri': dataSource.adsUri,
           'package': dataSource.package,
           'useCache': false,
           'maxCacheSize': 0,
@@ -79,6 +80,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         dataSourceDescription = <String, dynamic>{
           'key': dataSource.key,
           'uri': dataSource.uri,
+          'adsUri': dataSource.adsUri,
           'formatHint': dataSource.rawFormalHint,
           'headers': dataSource.headers,
           'useCache': dataSource.useCache,
@@ -103,6 +105,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         dataSourceDescription = <String, dynamic>{
           'key': dataSource.key,
           'uri': dataSource.uri,
+          'adsUri': dataSource.adsUri,
           'useCache': false,
           'maxCacheSize': 0,
           'maxCacheFileSize': 0,

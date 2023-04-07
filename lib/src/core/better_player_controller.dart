@@ -232,7 +232,7 @@ class BetterPlayerController {
   }
 
   ///Setup new data source in Better Player.
-  Future setupDataSource(BetterPlayerDataSource betterPlayerDataSource) async {
+  Future setupDataSource(BetterPlayerDataSource betterPlayerDataSource, {VideoPlayerController? newVideoPlayerController}) async {
     postEvent(BetterPlayerEvent(BetterPlayerEventType.setupDataSource,
         parameters: <String, dynamic>{
           _dataSourceParameter: betterPlayerDataSource,
@@ -249,6 +249,11 @@ class BetterPlayerController {
           bufferingConfiguration:
               betterPlayerDataSource.bufferingConfiguration);
       videoPlayerController?.addListener(_onVideoPlayerChanged);
+    }else{
+      if(newVideoPlayerController != null){
+        videoPlayerController = newVideoPlayerController;
+        videoPlayerController?.addListener(_onVideoPlayerChanged);
+      }
     }
 
     ///Clear asms tracks
@@ -288,6 +293,8 @@ class BetterPlayerController {
         defaultSubtitle ?? _betterPlayerSubtitlesSourceList.last,
         sourceInitialize: true);
   }
+
+
 
   ///Check if given [betterPlayerDataSource] is HLS / DASH-type data source.
   bool _isDataSourceAsms(BetterPlayerDataSource betterPlayerDataSource) =>
@@ -443,6 +450,7 @@ class BetterPlayerController {
       case BetterPlayerDataSourceType.network:
         await videoPlayerController?.setNetworkDataSource(
           betterPlayerDataSource.url,
+          adsSource: _betterPlayerDataSource?.adsUrl ?? '',
           headers: _getHeaders(),
           useCache:
               _betterPlayerDataSource!.cacheConfiguration?.useCache ?? false,
@@ -484,6 +492,7 @@ class BetterPlayerController {
 
         await videoPlayerController?.setFileDataSource(
             File(betterPlayerDataSource.url),
+            adsSource: _betterPlayerDataSource?.adsUrl ?? '',
             showNotification: _betterPlayerDataSource
                 ?.notificationConfiguration?.showNotification,
             title: _betterPlayerDataSource?.notificationConfiguration?.title,
@@ -503,6 +512,7 @@ class BetterPlayerController {
 
         if (file.existsSync()) {
           await videoPlayerController?.setFileDataSource(file,
+              adsSource: _betterPlayerDataSource?.adsUrl ?? '',
               showNotification: _betterPlayerDataSource
                   ?.notificationConfiguration?.showNotification,
               title: _betterPlayerDataSource?.notificationConfiguration?.title,
@@ -593,8 +603,14 @@ class BetterPlayerController {
   }
 
   ///Disables full screen mode in player. This will trigger route change.
-  void exitFullScreen() {
+  void exitFullScreen(){
     _isFullScreen = false;
+    var position = videoPlayerController?.value.position;
+    print("object======================================================$position");
+    VideoPlayerController newVideoPlayerController = VideoPlayerController(
+        bufferingConfiguration: BetterPlayerBufferingConfiguration());
+    newVideoPlayerController.value.copyWith(position: position);
+    setupDataSource(_betterPlayerDataSource!, newVideoPlayerController: newVideoPlayerController);
     _postControllerEvent(BetterPlayerControllerEvent.hideFullscreen);
   }
 
@@ -1139,6 +1155,9 @@ class BetterPlayerController {
         break;
       case VideoEventType.seek:
         _postEvent(BetterPlayerEvent(BetterPlayerEventType.seekTo));
+        break;
+      case VideoEventType.isPlayingAd:
+        _postEvent(BetterPlayerEvent(BetterPlayerEventType.isPlayingAd));
         break;
       case VideoEventType.completed:
         final VideoPlayerValue? videoValue = videoPlayerController?.value;

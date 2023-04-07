@@ -3,6 +3,7 @@ import 'package:better_player/better_player.dart';
 import 'package:better_player/src/configuration/better_player_controller_event.dart';
 import 'package:better_player/src/core/better_player_utils.dart';
 import 'package:better_player/src/core/better_player_with_controls.dart';
+import 'package:better_player/src/video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -14,25 +15,27 @@ class BetterPlayer extends StatefulWidget {
 
   factory BetterPlayer.network(
     String url, {
+    String? adsUrl,
     BetterPlayerConfiguration? betterPlayerConfiguration,
   }) =>
       BetterPlayer(
         controller: BetterPlayerController(
           betterPlayerConfiguration ?? const BetterPlayerConfiguration(),
           betterPlayerDataSource:
-              BetterPlayerDataSource(BetterPlayerDataSourceType.network, url),
+              BetterPlayerDataSource(BetterPlayerDataSourceType.network, url, adsUrl: adsUrl),
         ),
       );
 
   factory BetterPlayer.file(
     String url, {
-    BetterPlayerConfiguration? betterPlayerConfiguration,
+      String? adsUrl,
+      BetterPlayerConfiguration? betterPlayerConfiguration,
   }) =>
       BetterPlayer(
         controller: BetterPlayerController(
           betterPlayerConfiguration ?? const BetterPlayerConfiguration(),
           betterPlayerDataSource:
-              BetterPlayerDataSource(BetterPlayerDataSourceType.file, url),
+              BetterPlayerDataSource(BetterPlayerDataSourceType.file, url, adsUrl: adsUrl),
         ),
       );
 

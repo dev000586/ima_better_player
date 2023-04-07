@@ -15,6 +15,7 @@ import android.util.Log
 import android.util.LongSparseArray
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import com.google.android.exoplayer2.ui.PlayerView
 import com.jhomlala.better_player.BetterPlayerCache.releaseCache
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -130,8 +131,9 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
                     flutterState?.applicationContext!!, eventChannel, handle,
                     customDefaultLoadControl, result
                 )
+
                 videoPlayers.put(handle.id(), playerNativeView)
-                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player/${handle.id()}", NativeViewFactory(playerNativeView!!))
+                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player/${handle.id()}", NativeViewFactory(playerNativeView!!, activity!!))
             }
             PRE_CACHE_METHOD -> preCache(call, result)
             STOP_PRE_CACHE_METHOD -> stopPreCache(call, result)
@@ -248,6 +250,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
     ) {
         val dataSource = call.argument<Map<String, Any?>>(DATA_SOURCE_PARAMETER)!!
         dataSources.put(getTextureId(player)!!, dataSource)
+        val adsUri = getParameter(dataSource, ADS_URI_PARAMETER, "")
         val key = getParameter(dataSource, KEY_PARAMETER, "")
         val headers: Map<String, String> = getParameter(dataSource, HEADERS_PARAMETER, HashMap())
         val overriddenDuration: Number = getParameter(dataSource, OVERRIDDEN_DURATION_PARAMETER, 0)
@@ -267,6 +270,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
                 flutterState?.applicationContext!!,
                 key,
                 "asset:///$assetLookupKey",
+                adsUri,
                 null,
                 result,
                 headers,
@@ -295,6 +299,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
                 flutterState!!.applicationContext,
                 key,
                 uri,
+                adsUri,
                 formatHint,
                 result,
                 headers,
@@ -510,6 +515,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
         private const val ASSET_PARAMETER = "asset"
         private const val PACKAGE_PARAMETER = "package"
         private const val URI_PARAMETER = "uri"
+        private const val ADS_URI_PARAMETER = "adsUri"
         private const val FORMAT_HINT_PARAMETER = "formatHint"
         private const val TEXTURE_ID_PARAMETER = "textureId"
         private const val LOOPING_PARAMETER = "looping"
@@ -567,8 +573,10 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
     }
 }
 
-internal class NativeViewFactory(private val player: BetterPlayer) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+internal class NativeViewFactory(private val player: BetterPlayer, private val activity: Activity) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
+        val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.restartInput((activity).findViewById(viewId))
         if (player.view != null && player.view?.parent != null) {
             (player.view?.parent as ViewGroup).removeView(player.view)
         }

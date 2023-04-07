@@ -164,6 +164,10 @@ abstract class VideoPlayerPlatform {
     throw UnimplementedError('setAudio() has not been implemented.');
   }
 
+  Future<void> setTextureId(int? textureId) {
+    throw UnimplementedError('setTextureId() has not been implemented.');
+  }
+
   Future<void> setMixWithOthers(int? textureId, bool mixWithOthers) {
     throw UnimplementedError('setMixWithOthers() has not been implemented.');
   }
@@ -232,6 +236,7 @@ class DataSource {
     this.activityName,
     this.clearKey,
     this.videoExtension,
+    this.adsUri
   }) : assert(uri == null || asset == null);
 
   /// Describes the type of data source this [VideoPlayerController]
@@ -248,6 +253,8 @@ class DataSource {
   /// This will be in different formats depending on the [DataSourceType] of
   /// the original video.
   final String? uri;
+
+  final String? adsUri;
 
   /// **Android only**. Will override the platform's generic file format
   /// detection with whatever is set here.

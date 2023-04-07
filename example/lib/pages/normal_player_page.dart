@@ -11,6 +11,7 @@ class NormalPlayerPage extends StatefulWidget {
 class _NormalPlayerPageState extends State<NormalPlayerPage> {
   late BetterPlayerController _betterPlayerController;
   late BetterPlayerDataSource _betterPlayerDataSource;
+  String adsUrl = "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=";
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _NormalPlayerPageState extends State<NormalPlayerPage> {
     _betterPlayerDataSource = BetterPlayerDataSource(
       BetterPlayerDataSourceType.network,
       Constants.forBiggerBlazesUrl,
+      adsUrl: adsUrl
     );
     _betterPlayerController = BetterPlayerController(betterPlayerConfiguration);
     _betterPlayerController.setupDataSource(_betterPlayerDataSource);
