@@ -20,7 +20,6 @@ import android.view.LayoutInflater
 import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import androidx.lifecycle.Observer
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -32,15 +31,9 @@ import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.drm.*
 import com.google.android.exoplayer2.ext.ima.ImaAdsLoader
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.*
 import com.google.android.exoplayer2.source.ads.AdPlaybackState
 import com.google.android.exoplayer2.source.ads.AdsLoader
-import com.google.android.exoplayer2.source.dash.DashMediaSource
-import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
-import com.google.android.exoplayer2.source.hls.HlsMediaSource
-import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
-import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
@@ -99,7 +92,6 @@ internal class BetterPlayer(
     private var lastSendBufferedPosition = 0L
     private val handler = Handler(Looper.myLooper()!!)
     private val inflator: LayoutInflater
-    private var replySubmitted = false
 
 
 
@@ -206,6 +198,13 @@ internal class BetterPlayer(
             var dataSourceFactory: DataSource.Factory?
             val userAgent = getUserAgent(headers)
             if (licenseUrl != null && licenseUrl.isNotEmpty()) {
+//                if(adsUri.path == null || adsUri.path == ""){
+//                    val event: MutableMap<String, Any> = HashMap()
+//                    event["event"] = "isPlayingAd"
+//                    event["isPlayingAd"] = exoPlayer?.isPlayingAd.toString()
+//                    event["duration"] = getDuration()
+//                    eventSink.success(event)
+//                }
                 val httpMediaDrmCallback =
                     HttpMediaDrmCallback(licenseUrl, DefaultHttpDataSource.Factory())
                 if (drmHeaders != null) {
@@ -539,7 +538,7 @@ internal class BetterPlayer(
     private fun setupVideoPlayer(
         eventChannel: EventChannel, textureEntry: SurfaceTextureEntry, result: MethodChannel.Result
     ) {
-        try{
+        try {
             eventChannel.setStreamHandler(
                 object : EventChannel.StreamHandler {
                     override fun onListen(o: Any?, sink: EventSink) {
@@ -589,12 +588,9 @@ internal class BetterPlayer(
                 }
             })
 
-            if (!replySubmitted) {
-                val reply: MutableMap<String, Any> = HashMap()
-                reply["textureId"] = textureEntry.id()
-                result.success(reply)
-                replySubmitted = true
-            }
+            val reply: MutableMap<String, Any> = HashMap()
+            reply["textureId"] = textureEntry.id()
+            result.success(reply)
         }catch (e:Exception){
             Log.e("Error creting player", e.message.toString())
             result.error("","","")
@@ -850,9 +846,6 @@ internal class BetterPlayer(
 
 
     fun disposePlayer() {
-        if (playerView != null && playerView?.parent != null) {
-            (playerView?.parent as ViewGroup).removeView(playerView)
-        }
         eventChannel.setStreamHandler(null)
         adsLoader?.setPlayer(null)
         playerView?.player = null

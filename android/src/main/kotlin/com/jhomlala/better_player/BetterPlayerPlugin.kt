@@ -46,6 +46,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
     private var binding: FlutterPluginBinding? = null
     private var playerNativeView:BetterPlayer? = null
     private var viewId:Int? = null
+    private var setHandeler = false
 
 
 
@@ -127,13 +128,14 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
                         call.argument(BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
                     )
                 }
-                playerNativeView = BetterPlayer(
-                    flutterState?.applicationContext!!, eventChannel, handle,
-                    customDefaultLoadControl, result
-                )
+                    playerNativeView = BetterPlayer(
+                        flutterState?.applicationContext!!, eventChannel, handle,
+                        customDefaultLoadControl, result
+                    )
+
 
                 videoPlayers.put(handle.id(), playerNativeView)
-                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player/${handle.id()}", NativeViewFactory(playerNativeView!!, activity!!))
+                binding?.platformViewRegistry?.registerViewFactory("com.jhomlala/better_player/${handle.id()}", NativeViewFactory(playerNativeView!!, videoPlayers))
             }
             PRE_CACHE_METHOD -> preCache(call, result)
             STOP_PRE_CACHE_METHOD -> stopPreCache(call, result)
@@ -165,81 +167,85 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
         textureId: Long,
         player: BetterPlayer
     ) {
-        when (call.method) {
-            SET_DATA_SOURCE_METHOD -> {
-                setDataSource(call, result, player)
-            }
-            SET_LOOPING_METHOD -> {
-                player.setLooping(call.argument(LOOPING_PARAMETER)!!)
-                result.success(null)
-            }
-            SET_VOLUME_METHOD -> {
-                player.setVolume(call.argument(VOLUME_PARAMETER)!!)
-                result.success(null)
-            }
-            PLAY_METHOD -> {
+        try {
+            when (call.method) {
+                SET_DATA_SOURCE_METHOD -> {
+                    setDataSource(call, result, player)
+                }
+                SET_LOOPING_METHOD -> {
+                    player.setLooping(call.argument(LOOPING_PARAMETER)!!)
+                    result.success(null)
+                }
+                SET_VOLUME_METHOD -> {
+                    player.setVolume(call.argument(VOLUME_PARAMETER)!!)
+                    result.success(null)
+                }
+                PLAY_METHOD -> {
 //                setupNotification(player)
-                player.play()
-                result.success(null)
-            }
-            PAUSE_METHOD -> {
-                player.pause()
-                result.success(null)
-            }
-            SEEK_TO_METHOD -> {
-                val location = (call.argument<Any>(LOCATION_PARAMETER) as Number?)!!.toInt()
-                player.seekTo(location)
-                result.success(null)
-            }
-            POSITION_METHOD -> {
-                result.success(player.position)
-                player.sendBufferingUpdate(false)
-            }
-            ABSOLUTE_POSITION_METHOD -> result.success(player.absolutePosition)
-            SET_SPEED_METHOD -> {
-                player.setSpeed(call.argument(SPEED_PARAMETER)!!)
-                result.success(null)
-            }
-            SET_TRACK_PARAMETERS_METHOD -> {
-                player.setTrackParameters(
-                    call.argument(WIDTH_PARAMETER)!!,
-                    call.argument(HEIGHT_PARAMETER)!!,
-                    call.argument(BITRATE_PARAMETER)!!
-                )
-                result.success(null)
-            }
-            ENABLE_PICTURE_IN_PICTURE_METHOD -> {
-                enablePictureInPicture(player)
-                result.success(null)
-            }
-            DISABLE_PICTURE_IN_PICTURE_METHOD -> {
-                disablePictureInPicture(player)
-                result.success(null)
-            }
-            IS_PICTURE_IN_PICTURE_SUPPORTED_METHOD -> result.success(
-                isPictureInPictureSupported()
-            )
-            SET_AUDIO_TRACK_METHOD -> {
-                val name = call.argument<String?>(NAME_PARAMETER)
-                val index = call.argument<Int?>(INDEX_PARAMETER)
-                if (name != null && index != null) {
-                    player.setAudioTrack(name, index)
+                    player.play()
+                    result.success(null)
                 }
-                result.success(null)
-            }
-            SET_MIX_WITH_OTHERS_METHOD -> {
-                val mixWitOthers = call.argument<Boolean?>(
-                    MIX_WITH_OTHERS_PARAMETER
-                )
-                if (mixWitOthers != null) {
-                    player.setMixWithOthers(mixWitOthers)
+                PAUSE_METHOD -> {
+                    player.pause()
+                    result.success(null)
                 }
+                SEEK_TO_METHOD -> {
+                    val location = (call.argument<Any>(LOCATION_PARAMETER) as Number?)!!.toInt()
+                    player.seekTo(location)
+                    result.success(null)
+                }
+                POSITION_METHOD -> {
+                    result.success(player.position)
+                    player.sendBufferingUpdate(false)
+                }
+                ABSOLUTE_POSITION_METHOD -> result.success(player.absolutePosition)
+                SET_SPEED_METHOD -> {
+                    player.setSpeed(call.argument(SPEED_PARAMETER)!!)
+                    result.success(null)
+                }
+                SET_TRACK_PARAMETERS_METHOD -> {
+                    player.setTrackParameters(
+                        call.argument(WIDTH_PARAMETER)!!,
+                        call.argument(HEIGHT_PARAMETER)!!,
+                        call.argument(BITRATE_PARAMETER)!!
+                    )
+                    result.success(null)
+                }
+                ENABLE_PICTURE_IN_PICTURE_METHOD -> {
+                    enablePictureInPicture(player)
+                    result.success(null)
+                }
+                DISABLE_PICTURE_IN_PICTURE_METHOD -> {
+                    disablePictureInPicture(player)
+                    result.success(null)
+                }
+                IS_PICTURE_IN_PICTURE_SUPPORTED_METHOD -> result.success(
+                    isPictureInPictureSupported()
+                )
+                SET_AUDIO_TRACK_METHOD -> {
+                    val name = call.argument<String?>(NAME_PARAMETER)
+                    val index = call.argument<Int?>(INDEX_PARAMETER)
+                    if (name != null && index != null) {
+                        player.setAudioTrack(name, index)
+                    }
+                    result.success(null)
+                }
+                SET_MIX_WITH_OTHERS_METHOD -> {
+                    val mixWitOthers = call.argument<Boolean?>(
+                        MIX_WITH_OTHERS_PARAMETER
+                    )
+                    if (mixWitOthers != null) {
+                        player.setMixWithOthers(mixWitOthers)
+                    }
+                }
+                DISPOSE_METHOD -> {
+                    dispose(player, textureId)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
-            DISPOSE_METHOD -> {
-                dispose(player, textureId)
-                result.success(null)
-            }
-            else -> result.notImplemented()
+        }catch (e: Exception){
+            Log.e("Error calling method", e.message.toString())
         }
     }
 
@@ -573,13 +579,15 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler,Platf
     }
 }
 
-internal class NativeViewFactory(private val player: BetterPlayer, private val activity: Activity) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+internal class NativeViewFactory(private val player: BetterPlayer, private val videoPlayers : LongSparseArray<BetterPlayer>) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context?, viewId: Int, args: Any?): PlatformView {
-        val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.restartInput((activity).findViewById(viewId))
-        if (player.view != null && player.view?.parent != null) {
-            (player.view?.parent as ViewGroup).removeView(player.view)
-        }
+//        for (i in 0 until videoPlayers.size()){
+//            val player = videoPlayers.get(i.toLong())
+            if (player.view != null && player.view?.parent != null) {
+                (player.view?.parent as ViewGroup).removeAllViews()
+            }
+//        }
+//
         return player
     }
 }

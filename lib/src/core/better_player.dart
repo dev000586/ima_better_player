@@ -63,10 +63,16 @@ class _BetterPlayerState extends State<BetterPlayer>
   ///Subscription for controller events
   StreamSubscription? _controllerEventSubscription;
 
+  Widget betterPlayerCntrollerProvider = Container();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    betterPlayerCntrollerProvider = BetterPlayerControllerProvider(
+      controller: widget.controller,
+      child: _buildPlayer(),
+    );
   }
 
   @override
@@ -113,11 +119,11 @@ class _BetterPlayerState extends State<BetterPlayer>
           _betterPlayerConfiguration.deviceOrientationsAfterFullScreen);
     }
 
-    WidgetsBinding.instance.removeObserver(this);
     _controllerEventSubscription?.cancel();
     widget.controller.dispose();
     VisibilityDetectorController.instance
         .forget(Key("${widget.controller.hashCode}_key"));
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -154,7 +160,35 @@ class _BetterPlayerState extends State<BetterPlayer>
           .postEvent(BetterPlayerEvent(BetterPlayerEventType.openFullscreen));
       await _pushFullScreenWidget(context);
     } else if (_isFullScreen) {
+      // var position = await widget.controller.videoPlayerController?.position;
       Navigator.of(context, rootNavigator: true).pop();
+      //
+      // widget.controller.dispose();
+      //
+      // var betterController = BetterPlayerController(
+      //     BetterPlayerConfiguration(),
+      //   betterPlayerDataSource: controller.betterPlayerDataSource?.copyWith(adsUrl: ''),
+      //   betterPlayerPlaylistConfiguration: controller.betterPlayerPlaylistConfiguration
+      // );
+      // setState(() {
+      //   betterPlayerCntrollerProvider = BetterPlayerControllerProvider(
+      //     controller: betterController,
+      //     child: _buildPlayer(),
+      //   );
+      // });
+      // betterController.seekTo(position ?? Duration());
+
+      // var position = controller.videoPlayerController?.value.position;
+      // print("object======================================================$position,${position?.inSeconds}");
+      // VideoPlayerController newVideoPlayerController = VideoPlayerController(
+      //     bufferingConfiguration: BetterPlayerBufferingConfiguration());
+      // controller.videoPlayerController = newVideoPlayerController;
+      // if(position == null || position.inSeconds <= 1){
+      //   await controller.setupDataSource(controller.betterPlayerDataSource!, newVideoPlayerController: controller.videoPlayerController);
+      // }else{
+      //   await controller.setupDataSource(controller.betterPlayerDataSource!.copyWith(adsUrl: ''), newVideoPlayerController: controller.videoPlayerController);
+      //   controller.videoPlayerController?.seekTo(position);
+      // }
       _isFullScreen = false;
       controller
           .postEvent(BetterPlayerEvent(BetterPlayerEventType.hideFullscreen));
@@ -163,11 +197,9 @@ class _BetterPlayerState extends State<BetterPlayer>
 
   @override
   Widget build(BuildContext context) {
-    return BetterPlayerControllerProvider(
-      controller: widget.controller,
-      child: _buildPlayer(),
-    );
+    return betterPlayerCntrollerProvider;
   }
+
 
   Widget _buildFullScreenVideo(
       BuildContext context,

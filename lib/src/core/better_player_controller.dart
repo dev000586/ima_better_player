@@ -603,14 +603,22 @@ class BetterPlayerController {
   }
 
   ///Disables full screen mode in player. This will trigger route change.
-  void exitFullScreen(){
+  void exitFullScreen() async {
     _isFullScreen = false;
     var position = videoPlayerController?.value.position;
+    var duration = videoPlayerController?.value.duration;
     print("object======================================================$position");
     VideoPlayerController newVideoPlayerController = VideoPlayerController(
         bufferingConfiguration: BetterPlayerBufferingConfiguration());
-    newVideoPlayerController.value.copyWith(position: position);
-    setupDataSource(_betterPlayerDataSource!, newVideoPlayerController: newVideoPlayerController);
+    videoPlayerController = newVideoPlayerController;
+    if(position == null || position.inSeconds <= 1){
+      print("object======================================================1=$position");
+      await setupDataSource(_betterPlayerDataSource!, newVideoPlayerController: videoPlayerController);
+    }else{
+      print("object======================================================2=$position");
+      await setupDataSource(_betterPlayerDataSource!.copyWith(adsUrl: '',), newVideoPlayerController: videoPlayerController);
+      videoPlayerController?.seekTo(position);
+    }
     _postControllerEvent(BetterPlayerControllerEvent.hideFullscreen);
   }
 

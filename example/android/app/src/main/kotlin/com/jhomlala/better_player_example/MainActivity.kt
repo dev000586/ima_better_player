@@ -14,11 +14,6 @@ class MainActivity : FlutterActivity() {
         startNotificationService()
     }
 
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        GeneratedPluginRegistrant.registerWith(flutterEngine)
-        super.configureFlutterEngine(flutterEngine)
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         stopNotificationService()

@@ -47,7 +47,7 @@ class _NormalPlayerPageState extends State<NormalPlayerPage> {
           const SizedBox(height: 8),
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: BetterPlayer(controller: _betterPlayerController),
+            child: Expanded(child: BetterPlayer(controller: _betterPlayerController)),
           ),
         ],
       ),
